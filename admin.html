@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Elyseum Time — Panel Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --gold-1:#f7d78a; --gold-2:#caa23a; --gold-3:#5e3f14; --bronze:#3d2a0f;
+    --bg-0:#040507; --bg-1:#0a0e18; --ink:#f3ead9; --muted:#a89a82;
+    --glass: rgba(202,162,58,0.06); --glass-border: rgba(202,162,58,0.3);
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{font-family:'Inter',sans-serif; background:linear-gradient(180deg,var(--bg-0),var(--bg-1)); color:var(--ink); min-height:100vh;}
+  .serif{font-family:'Cormorant Garamond',serif;}
+  .wrap{max-width:980px; margin:0 auto; padding:30px 18px 80px;}
+  h1{font-family:'Cormorant Garamond',serif; font-size:1.8rem; color:var(--gold-1); margin-bottom:6px;}
+  .sub{color:var(--muted); font-size:0.85rem; margin-bottom:24px;}
+  .card{background:linear-gradient(160deg, rgba(202,162,58,0.07), rgba(9,12,20,0.7)); border:1px solid var(--glass-border);
+    border-radius:14px; padding:20px; margin-bottom:18px;}
+  label{display:block; font-size:0.75rem; color:var(--muted); margin:10px 0 5px;}
+  input, select, textarea{
+    width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--glass-border);
+    background:rgba(255,255,255,0.04); color:var(--ink); font-family:inherit; font-size:0.9rem;
+  }
+  textarea{min-height:70px; resize:vertical;}
+  button{
+    cursor:pointer; border:none; border-radius:999px; padding:11px 22px; font-weight:700; font-size:0.85rem;
+    background:linear-gradient(120deg,var(--bronze),var(--gold-2) 40%,var(--gold-1) 60%,var(--gold-2));
+    color:#181209; margin-top:14px;
+  }
+  button.secondary{background:rgba(255,255,255,0.06); color:var(--ink); border:1px solid var(--glass-border);}
+  button.danger{background:#7a2d2d; color:#fff;}
+  .row{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+  @media(max-width:600px){.row{grid-template-columns:1fr;}}
+  #loginBox{max-width:380px; margin:80px auto;}
+  .hidden{display:none;}
+  .product-list{display:grid; gap:12px;}
+  .product-item{display:flex; gap:14px; align-items:center; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border);
+    border-radius:12px; padding:10px;}
+  .product-item img{width:64px; height:64px; object-fit:cover; border-radius:8px; background:#111;}
+  .product-item .info{flex:1;}
+  .product-item .info .name{font-family:'Cormorant Garamond',serif; font-size:1.05rem;}
+  .product-item .info .meta{font-size:0.72rem; color:var(--muted);}
+  .actions{display:flex; gap:8px;}
+  .actions button{margin-top:0; padding:8px 14px; font-size:0.72rem;}
+  .msg{padding:10px 14px; border-radius:8px; font-size:0.82rem; margin-top:10px;}
+  .msg.ok{background:rgba(80,180,120,0.15); border:1px solid rgba(80,180,120,0.4); color:#8fe0b0;}
+  .msg.err{background:rgba(200,80,80,0.15); border:1px solid rgba(200,80,80,0.4); color:#f0a0a0;}
+  .top-actions{display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <div id="loginBox" class="card">
+    <h1>Elyseum Time</h1>
+    <p class="sub">Panel de administración del catálogo</p>
+    <label>Correo</label>
+    <input type="email" id="loginEmail" placeholder="tu@correo.com">
+    <label>Contraseña</label>
+    <input type="password" id="loginPass" placeholder="••••••••">
+    <button onclick="doLogin()">Entrar</button>
+    <div id="loginMsg"></div>
+  </div>
+
+  <div id="panel" class="hidden">
+    <div class="top-actions">
+      <div>
+        <h1>Catálogo</h1>
+        <p class="sub">Sube, edita o borra los relojes que se ven en la página principal.</p>
+      </div>
+      <button class="secondary" onclick="doLogout()">Cerrar sesión</button>
+    </div>
+
+    <div class="card">
+      <h2 class="serif" style="font-size:1.2rem; color:var(--gold-1);" id="formTitle">Agregar reloj nuevo</h2>
+      <input type="hidden" id="editId">
+      <div class="row">
+        <div>
+          <label>Categoría (escribe el nombre; si es nueva, se crea sola en la página)</label>
+          <input type="text" id="fCategory" list="catSuggestions" placeholder="Ej: Reloj Lujo, Productos Originales...">
+          <datalist id="catSuggestions">
+            <option value="G-Force Caballero">
+            <option value="Invicta Caballero">
+            <option value="Invicta Zeus Caballero">
+            <option value="G-Force Cubano">
+            <option value="G-Force Cronos">
+            <option value="G-Force Automático">
+            <option value="Relojes Originales">
+          </datalist>
+        </div>
+        <div>
+          <label>Nombre del reloj</label>
+          <input type="text" id="fName" placeholder="Ej: Cronos Steel Azul">
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label>Precio actual (COP)</label>
+          <input type="number" id="fPrice" placeholder="420000">
+        </div>
+        <div>
+          <label>Precio anterior (opcional, para mostrar descuento)</label>
+          <input type="number" id="fOldPrice" placeholder="560000">
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label>Unidades disponibles</label>
+          <input type="number" id="fStock" placeholder="8">
+        </div>
+        <div>
+          <label>Foto del reloj</label>
+          <input type="file" id="fImage" accept="image/*">
+        </div>
+      </div>
+      <label>Frase corta (opcional)</label>
+      <input type="text" id="fTagline" placeholder='Ej: "El que no se apaga cuando tú te apagas."'>
+      <label>Descripción</label>
+      <textarea id="fDesc" placeholder="Descripción del reloj..."></textarea>
+      <button onclick="saveProduct()">Guardar reloj</button>
+      <button class="secondary" onclick="resetForm()">Cancelar edición</button>
+      <div id="formMsg"></div>
+    </div>
+
+    <div class="card">
+      <h2 class="serif" style="font-size:1.2rem; color:var(--gold-1);">Productos actuales</h2>
+      <div id="productList" class="product-list" style="margin-top:14px;"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ⚠️ CONFIGURA ESTO con los datos de tu proyecto Supabase (Project Settings > API)
+const SUPABASE_URL = "https://vxgnuitgneahlpgcproo.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ4Z251aXRnbmVhaGxwZ2Nwcm9vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUyMjE0NjQsImV4cCI6MjEwMDc5NzQ2NH0.lqM9Z9gw-UHKU2Z-O3mCPlzz_cPBzeGgEJ-2c43oa2w";
+
+const sb = (SUPABASE_URL.startsWith("http")) ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+
+function showMsg(elId, text, ok){
+  const el = document.getElementById(elId);
+  el.innerHTML = `<div class="msg ${ok?'ok':'err'}">${text}</div>`;
+  setTimeout(()=>{ el.innerHTML=''; }, 4000);
+}
+
+async function doLogin(){
+  if(!sb){ showMsg('loginMsg','Falta configurar SUPABASE_URL y SUPABASE_ANON_KEY en este archivo.', false); return; }
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass = document.getElementById('loginPass').value;
+  const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+  if(error){ showMsg('loginMsg', 'No se pudo entrar: ' + error.message, false); return; }
+  document.getElementById('loginBox').classList.add('hidden');
+  document.getElementById('panel').classList.remove('hidden');
+  loadProducts();
+}
+
+async function doLogout(){
+  if(sb) await sb.auth.signOut();
+  document.getElementById('panel').classList.add('hidden');
+  document.getElementById('loginBox').classList.remove('hidden');
+}
+
+function resetForm(){
+  document.getElementById('editId').value = '';
+  document.getElementById('fName').value = '';
+  document.getElementById('fPrice').value = '';
+  document.getElementById('fOldPrice').value = '';
+  document.getElementById('fStock').value = '';
+  document.getElementById('fTagline').value = '';
+  document.getElementById('fDesc').value = '';
+  document.getElementById('fImage').value = '';
+  document.getElementById('formTitle').textContent = 'Agregar reloj nuevo';
+}
+
+async function saveProduct(){
+  if(!sb){ showMsg('formMsg','Falta configurar Supabase en este archivo.', false); return; }
+  const id = document.getElementById('editId').value;
+  const category = document.getElementById('fCategory').value;
+  const name = document.getElementById('fName').value.trim();
+  const price = parseFloat(document.getElementById('fPrice').value || '0');
+  const old_price = document.getElementById('fOldPrice').value ? parseFloat(document.getElementById('fOldPrice').value) : null;
+  const stock = parseInt(document.getElementById('fStock').value || '5');
+  const tagline = document.getElementById('fTagline').value.trim();
+  const description = document.getElementById('fDesc').value.trim();
+  const file = document.getElementById('fImage').files[0];
+
+  if(!name || !price){ showMsg('formMsg', 'Falta el nombre o el precio.', false); return; }
+
+  let image_url = null;
+  if(file){
+    const fileName = `${Date.now()}-${file.name.replace(/\s+/g,'-')}`;
+    const { error: upErr } = await sb.storage.from('product-images').upload(fileName, file);
+    if(upErr){ showMsg('formMsg', 'Error subiendo la foto: ' + upErr.message, false); return; }
+    const { data: pub } = sb.storage.from('product-images').getPublicUrl(fileName);
+    image_url = pub.publicUrl;
+  }
+
+  const payload = { category, name, price, old_price, stock, tagline, description };
+  if(image_url) payload.image_url = image_url;
+
+  let res;
+  if(id){
+    res = await sb.from('products').update(payload).eq('id', id);
+  } else {
+    if(!image_url){ showMsg('formMsg', 'Sube una foto para el reloj nuevo.', false); return; }
+    res = await sb.from('products').insert(payload);
+  }
+  if(res.error){ showMsg('formMsg', 'Error guardando: ' + res.error.message, false); return; }
+  showMsg('formMsg', 'Guardado correctamente.', true);
+  resetForm();
+  loadProducts();
+}
+
+async function loadProducts(){
+  if(!sb) return;
+  const { data, error } = await sb.from('products').select('*').order('category').order('sort_order');
+  const list = document.getElementById('productList');
+  if(error){ list.innerHTML = `<div class="msg err">Error cargando: ${error.message}</div>`; return; }
+  if(!data || !data.length){ list.innerHTML = `<p class="sub">Todavía no hay productos. Agrega el primero arriba.</p>`; return; }
+  var cats = [...new Set(data.map(p => p.category))];
+  var dl = document.getElementById('catSuggestions');
+  cats.forEach(function(c){
+    if(![...dl.options].some(o => o.value === c)){
+      var opt = document.createElement('option'); opt.value = c; dl.appendChild(opt);
+    }
+  });
+  list.innerHTML = data.map(p => `
+    <div class="product-item">
+      <img src="${p.image_url || ''}" alt="${p.name}">
+      <div class="info">
+        <div class="name">${p.name}</div>
+        <div class="meta">${p.category} · $${Number(p.price).toLocaleString('es-CO')} · Quedan ${p.stock}</div>
+      </div>
+      <div class="actions">
+        <button class="secondary" onclick='editProduct(${JSON.stringify(p).replace(/'/g,"&apos;")})'>Editar</button>
+        <button class="danger" onclick="deleteProduct('${p.id}')">Borrar</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function editProduct(p){
+  document.getElementById('editId').value = p.id;
+  document.getElementById('fCategory').value = p.category;
+  document.getElementById('fName').value = p.name;
+  document.getElementById('fPrice').value = p.price;
+  document.getElementById('fOldPrice').value = p.old_price || '';
+  document.getElementById('fStock').value = p.stock;
+  document.getElementById('fTagline').value = p.tagline || '';
+  document.getElementById('fDesc').value = p.description || '';
+  document.getElementById('formTitle').textContent = 'Editando: ' + p.name;
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+async function deleteProduct(id){
+  if(!confirm('¿Seguro que quieres borrar este reloj? Esta acción no se puede deshacer.')) return;
+  const { error } = await sb.from('products').delete().eq('id', id);
+  if(error){ showMsg('formMsg', 'Error borrando: ' + error.message, false); return; }
+  loadProducts();
+}
+
+// Si ya hay sesión activa (recargaste la página), entra directo
+(async function checkSession(){
+  if(!sb) return;
+  const { data } = await sb.auth.getSession();
+  if(data.session){
+    document.getElementById('loginBox').classList.add('hidden');
+    document.getElementById('panel').classList.remove('hidden');
+    loadProducts();
+  }
+})();
+</script>
+
+</body>
+</html>
