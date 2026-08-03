@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Elyseum Time — Panel Admin</title>
+<meta name="robots" content="noindex, nofollow, noarchive">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;900&family=Syne:wght@500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --gold-1:#6ee7d0; --gold-2:#a389f4; --gold-3:#3d2c66; --bronze:#221a3d;
+    --oxblood:#e879b9; --oxblood-light:#f4a6d4;
+    --bg-0:#05050c; --bg-1:#0a0a18; --ink:#eef1f7; --muted:#8b93a8;
+    --glass: rgba(163,137,244,0.06); --glass-border: rgba(163,137,244,0.28);
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html{-webkit-text-size-adjust:100%;}
+  body{
+    font-family:'Inter',sans-serif; color:var(--ink); min-height:100vh;
+    background:
+      radial-gradient(1100px 700px at 12% -8%, rgba(110,231,208,0.14), transparent 62%),
+      radial-gradient(1000px 720px at 95% 0%, rgba(163,137,244,0.18), transparent 65%),
+      radial-gradient(800px 600px at 50% 105%, rgba(232,121,185,0.12), transparent 62%),
+      linear-gradient(180deg, var(--bg-0), var(--bg-1) 45%, var(--bg-0));
+  }
+  .syne{font-family:'Syne',sans-serif; font-weight:700;}
+  .wrap{max-width:1040px; margin:0 auto; padding:30px 18px 90px;}
+  h1{font-family:'Unbounded',sans-serif; font-weight:700; font-size:1.5rem; color:var(--gold-1); margin-bottom:6px;}
+  h2{font-family:'Syne',sans-serif; font-weight:700; font-size:1.1rem; color:var(--gold-1);}
+  .sub{color:var(--muted); font-size:0.85rem; margin-bottom:20px;}
+  .card{background:linear-gradient(160deg, rgba(163,137,244,0.07), rgba(9,12,20,0.7)); border:1px solid var(--glass-border);
+    border-radius:14px; padding:20px; margin-bottom:18px; box-shadow:inset 0 1px 0 rgba(238,241,247,0.06);}
+  label{display:block; font-size:0.72rem; color:var(--muted); margin:10px 0 5px; letter-spacing:0.02em;}
+  input, select, textarea{
+    width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--glass-border);
+    background:rgba(255,255,255,0.04); color:var(--ink); font-family:inherit; font-size:0.9rem;
+  }
+  textarea{min-height:70px; resize:vertical;}
+  button{
+    cursor:pointer; border:none; border-radius:999px; padding:11px 22px; font-weight:700; font-size:0.82rem;
+    background:linear-gradient(120deg,var(--bronze),var(--gold-2) 40%,var(--gold-1) 60%,var(--gold-2)); color:#0b0b12; margin-top:14px;
+  }
+  button.secondary{background:rgba(255,255,255,0.06); color:var(--ink); border:1px solid var(--glass-border);}
+  button.danger{background:linear-gradient(120deg,#5a1830,var(--oxblood)); color:#fff;}
+  .row{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+  @media(max-width:600px){.row{grid-template-columns:1fr;}}
+  #loginBox{max-width:380px; margin:80px auto;}
+  .hidden{display:none;}
+  .list{display:grid; gap:10px;}
+  .item{display:flex; gap:14px; align-items:center; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border);
+    border-radius:12px; padding:10px 14px; flex-wrap:wrap;}
+  .item img{width:56px; height:56px; object-fit:cover; border-radius:8px; background:#111; flex-shrink:0;}
+  .item .info{flex:1; min-width:140px;}
+  .item .info .name{font-family:'Syne',sans-serif; font-weight:700; font-size:1rem;}
+  .item .info .meta{font-size:0.72rem; color:var(--muted); margin-top:2px;}
+  .badge-low{background:rgba(232,121,185,0.18); border:1px solid rgba(232,121,185,0.5); color:var(--oxblood-light);
+    font-size:0.62rem; padding:3px 9px; border-radius:999px; letter-spacing:0.04em; text-transform:uppercase;}
+  .actions{display:flex; gap:8px; flex-wrap:wrap;}
+  .actions button{margin-top:0; padding:8px 14px; font-size:0.72rem;}
+  .msg{padding:10px 14px; border-radius:8px; font-size:0.82rem; margin-top:10px;}
+  .msg.ok{background:rgba(110,231,208,0.15); border:1px solid rgba(110,231,208,0.4); color:var(--gold-1);}
+  .msg.err{background:rgba(232,121,185,0.15); border:1px solid rgba(232,121,185,0.4); color:var(--oxblood-light);}
+  .top-actions{display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;}
+  .tabs{display:flex; gap:8px; overflow-x:auto; margin-bottom:18px; padding-bottom:4px;}
+  .tab{flex-shrink:0; padding:9px 16px; border-radius:999px; font-size:0.78rem; font-weight:600; cursor:pointer;
+    border:1px solid var(--glass-border); background:rgba(255,255,255,0.04); color:var(--muted);}
+  .tab.active{background:linear-gradient(120deg,var(--gold-3),var(--gold-2)); color:#0b0b12; border-color:transparent;}
+  .panel{display:none;}
+  .panel.active{display:block;}
+  .stat-row{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:16px;}
+  @media(max-width:600px){.stat-row{grid-template-columns:1fr;}}
+  .stat{background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); border-radius:12px; padding:14px; text-align:center;}
+  .stat .num{font-family:'JetBrains Mono',monospace; font-size:1.3rem; color:var(--gold-1); font-weight:600;}
+  .stat .lab{font-size:0.68rem; color:var(--muted); margin-top:4px;}
+  .mono{font-family:'JetBrains Mono',monospace;}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <div id="loginBox" class="card">
+    <h1>Elyseum Time</h1>
+    <p class="sub">Panel de administración</p>
+    <label>Correo</label>
+    <input type="email" id="loginEmail" placeholder="tu@correo.com">
+    <label>Contraseña</label>
+    <input type="password" id="loginPass" placeholder="••••••••">
+    <button onclick="doLogin()">Entrar</button>
+    <div id="loginMsg"></div>
+  </div>
+
+  <div id="panel" class="hidden">
+    <div class="top-actions">
+      <div>
+        <h1>Panel de control</h1>
+        <p class="sub" style="margin-bottom:0;">Catálogo, ventas, gastos y comentarios — todo en un lugar.</p>
+      </div>
+      <button class="secondary" onclick="doLogout()">Cerrar sesión</button>
+    </div>
+
+    <div class="tabs" id="tabsRow">
+      <div class="tab active" data-tab="catalogo">Catálogo</div>
+      <div class="tab" data-tab="ventas">Registrar venta</div>
+      <div class="tab" data-tab="pedidos">Historial de pedidos</div>
+      <div class="tab" data-tab="reporte">Reporte de ventas</div>
+      <div class="tab" data-tab="finanzas">Gastos e ingresos</div>
+      <div class="tab" data-tab="comentarios">Comentarios</div>
+      <div class="tab" data-tab="consejos">Consejos de venta</div>
+    </div>
+
+    <!-- ===== CATÁLOGO ===== -->
+    <div class="panel active" data-panel="catalogo">
+      <div class="card">
+        <h2 id="formTitle">Agregar reloj nuevo</h2>
+        <input type="hidden" id="editId">
+        <div class="row">
+          <div>
+            <label>Categoría (escribe el nombre; si es nueva, se crea sola en la página)</label>
+            <input type="text" id="fCategory" list="catSuggestions" placeholder="Ej: Reloj Lujo, Productos Originales...">
+            <datalist id="catSuggestions">
+              <option value="G-Force Caballero">
+              <option value="Invicta Caballero">
+              <option value="Invicta Zeus Caballero">
+              <option value="G-Force Cubano">
+              <option value="G-Force Cronos">
+              <option value="G-Force Automático">
+              <option value="Relojes Originales">
+            </datalist>
+          </div>
+          <div>
+            <label>Nombre del reloj</label>
+            <input type="text" id="fName" placeholder="Ej: Cronos Steel Azul">
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label>Precio actual (COP)</label>
+            <input type="number" id="fPrice" placeholder="420000">
+          </div>
+          <div>
+            <label>Precio anterior (opcional, para mostrar descuento)</label>
+            <input type="number" id="fOldPrice" placeholder="560000">
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label>Unidades disponibles</label>
+            <input type="number" id="fStock" placeholder="8">
+          </div>
+          <div>
+            <label>Foto del reloj</label>
+            <input type="file" id="fImage" accept="image/*">
+          </div>
+        </div>
+        <label>Frase corta (opcional)</label>
+        <input type="text" id="fTagline" placeholder='Ej: "El que no se apaga cuando tú te apagas."'>
+        <label>Descripción</label>
+        <textarea id="fDesc" placeholder="Descripción del reloj..."></textarea>
+        <button onclick="saveProduct()">Guardar reloj</button>
+        <button class="secondary" onclick="resetForm()">Cancelar edición</button>
+        <div id="formMsg"></div>
+      </div>
+
+      <div class="card">
+        <h2>Productos actuales</h2>
+        <p class="sub">Los relojes con <span class="badge-low">bajo stock</span> se agotan pronto — repón antes de que lleguen a 0.</p>
+        <div id="productList" class="list"></div>
+      </div>
+    </div>
+
+    <!-- ===== REGISTRAR VENTA ===== -->
+    <div class="panel" data-panel="ventas">
+      <div class="card">
+        <h2>Registrar una venta</h2>
+        <p class="sub">Al confirmar, el stock de ese reloj baja solo y queda guardado en tu historial de pedidos.</p>
+        <label>¿Cuál reloj se vendió?</label>
+        <select id="saleProduct"></select>
+        <label>Nombre del cliente (opcional)</label>
+        <input type="text" id="saleCustomer" placeholder="Ej: Andrés R.">
+        <button onclick="registerSale()">Confirmar venta</button>
+        <div id="saleMsg"></div>
+      </div>
+    </div>
+
+    <!-- ===== HISTORIAL DE PEDIDOS ===== -->
+    <div class="panel" data-panel="pedidos">
+      <div class="card">
+        <h2>Historial de pedidos</h2>
+        <div id="ordersList" class="list" style="margin-top:14px;"></div>
+      </div>
+    </div>
+
+    <!-- ===== REPORTE DE VENTAS ===== -->
+    <div class="panel" data-panel="reporte">
+      <div class="card">
+        <h2>Qué se está moviendo más</h2>
+        <div class="stat-row" id="reportStats"></div>
+        <div id="reportList" class="list"></div>
+      </div>
+    </div>
+
+    <!-- ===== GASTOS E INGRESOS ===== -->
+    <div class="panel" data-panel="finanzas">
+      <div class="card">
+        <h2>Registrar movimiento</h2>
+        <div class="row">
+          <div>
+            <label>Tipo</label>
+            <select id="finType">
+              <option value="ingreso">Ingreso</option>
+              <option value="gasto">Gasto</option>
+            </select>
+          </div>
+          <div>
+            <label>Monto (COP)</label>
+            <input type="number" id="finAmount" placeholder="50000">
+          </div>
+        </div>
+        <label>Descripción</label>
+        <input type="text" id="finDesc" placeholder="Ej: pauta publicitaria Meta, compra de correas...">
+        <button onclick="addFinance()">Guardar movimiento</button>
+        <div id="finMsg"></div>
+      </div>
+      <div class="card">
+        <h2>Balance del mes</h2>
+        <div class="stat-row" id="finStats"></div>
+        <div id="finList" class="list"></div>
+      </div>
+    </div>
+
+    <!-- ===== COMENTARIOS ===== -->
+    <div class="panel" data-panel="comentarios">
+      <div class="card">
+        <h2>💬 Comentarios pendientes de aprobar</h2>
+        <div id="pendingComments" class="list" style="margin-top:14px;"></div>
+      </div>
+    </div>
+
+    <!-- ===== CONSEJOS DE VENTA ===== -->
+    <div class="panel" data-panel="consejos">
+      <div class="card">
+        <h2>💡 Consejos para cerrar ventas por WhatsApp</h2>
+        <div style="margin-top:16px;">
+          <h3 class="syne" style="color:var(--gold-1); font-size:1rem; margin-bottom:8px;">1. Primer contacto — los primeros 30 segundos deciden todo</h3>
+          <ul style="margin-left:18px; color:var(--muted); font-size:0.85rem; line-height:1.7;">
+            <li>Responde rápido. Si tardas más de 10-15 minutos, la persona ya le escribió a otro vendedor.</li>
+            <li>No empieces con "¿en qué te puedo ayudar?" — saluda por el nombre del reloj que preguntó.</li>
+            <li>Manda 1-2 fotos extra que no estén en la página — genera más confianza.</li>
+          </ul>
+          <h3 class="syne" style="color:var(--gold-1); font-size:1rem; margin:16px 0 8px;">2. Cuando pregunte el precio y le parezca alto</h3>
+          <ul style="margin-left:18px; color:var(--muted); font-size:0.85rem; line-height:1.7;">
+            <li>Nunca bajes el precio de una — pregunta primero para qué lo busca.</li>
+            <li>Recuérdale lo que incluye: caja, garantía, envío.</li>
+            <li>Ofrece descuento pequeño solo si paga de una vez.</li>
+          </ul>
+          <h3 class="syne" style="color:var(--gold-1); font-size:1rem; margin:16px 0 8px;">3. Generar urgencia sin sonar desesperado</h3>
+          <ul style="margin-left:18px; color:var(--muted); font-size:0.85rem; line-height:1.7;">
+            <li>Usa el stock real que pusiste en el panel — "quedan solo 2".</li>
+          </ul>
+          <h3 class="syne" style="color:var(--gold-1); font-size:1rem; margin:16px 0 8px;">4. El cierre</h3>
+          <ul style="margin-left:18px; color:var(--muted); font-size:0.85rem; line-height:1.7;">
+            <li>No preguntes "¿lo quieres?" — pregunta algo que ya asume la compra.</li>
+            <li>Si queda pensándolo, reabre el chat a las 2-3 horas sin presionar.</li>
+          </ul>
+          <h3 class="syne" style="color:var(--gold-1); font-size:1rem; margin:16px 0 8px;">5. Después de la venta</h3>
+          <ul style="margin-left:18px; color:var(--muted); font-size:0.85rem; line-height:1.7;">
+            <li>Pide reseña/foto a los pocos días — sirve como prueba social.</li>
+            <li>Avísale cuando subas un modelo parecido al que compró.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = "https://vxgnuitgneahlpgcproo.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ4Z251aXRnbmVhaGxwZ2Nwcm9vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUyMjE0NjQsImV4cCI6MjEwMDc5NzQ2NH0.lqM9Z9gw-UHKU2Z-O3mCPlzz_cPBzeGgEJ-2c43oa2w";
+
+const sb = (SUPABASE_URL.startsWith("http")) ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: { persistSession: true, autoRefreshToken: true, storage: window.sessionStorage }
+}) : null;
+
+function showMsg(elId, text, ok){
+  const el = document.getElementById(elId);
+  el.innerHTML = `<div class="msg ${ok?'ok':'err'}">${text}</div>`;
+  setTimeout(()=>{ el.innerHTML=''; }, 4000);
+}
+function money(n){ return "$" + Number(n).toLocaleString("es-CO"); }
+
+// ---------- TABS ----------
+document.getElementById('tabsRow').addEventListener('click', function(e){
+  var tab = e.target.closest('.tab');
+  if(!tab) return;
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t === tab));
+  document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.dataset.panel === tab.dataset.tab));
+  if(tab.dataset.tab === 'ventas') populateSaleSelect();
+  if(tab.dataset.tab === 'pedidos') loadOrders();
+  if(tab.dataset.tab === 'reporte') loadReport();
+  if(tab.dataset.tab === 'finanzas') loadFinance();
+});
+
+// ---------- LOGIN ----------
+async function doLogin(){
+  if(!sb){ showMsg('loginMsg','Falta configurar SUPABASE_URL y SUPABASE_ANON_KEY en este archivo.', false); return; }
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass = document.getElementById('loginPass').value;
+  const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+  if(error){ showMsg('loginMsg', 'No se pudo entrar: ' + error.message, false); return; }
+  enterPanel();
+}
+async function doLogout(){
+  if(sb) await sb.auth.signOut();
+  document.getElementById('panel').classList.add('hidden');
+  document.getElementById('loginBox').classList.remove('hidden');
+}
+function enterPanel(){
+  document.getElementById('loginBox').classList.add('hidden');
+  document.getElementById('panel').classList.remove('hidden');
+  loadProducts();
+  loadPendingComments();
+  armIdleLogout();
+}
+(async function checkSession(){
+  if(!sb) return;
+  const { data } = await sb.auth.getSession();
+  if(data.session) enterPanel();
+})();
+let idleTimer;
+function armIdleLogout(){
+  const LIMIT_MS = 15 * 60 * 1000;
+  function reset(){
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(async () => {
+      await doLogout();
+      alert('Sesión cerrada por inactividad, por seguridad. Vuelve a iniciar sesión.');
+    }, LIMIT_MS);
+  }
+  ['mousemove','keydown','click','touchstart'].forEach(ev => document.addEventListener(ev, reset));
+  reset();
+}
+
+// ---------- CATÁLOGO ----------
+function resetForm(){
+  document.getElementById('editId').value = '';
+  document.getElementById('fName').value = '';
+  document.getElementById('fPrice').value = '';
+  document.getElementById('fOldPrice').value = '';
+  document.getElementById('fStock').value = '';
+  document.getElementById('fTagline').value = '';
+  document.getElementById('fDesc').value = '';
+  document.getElementById('fImage').value = '';
+  document.getElementById('formTitle').textContent = 'Agregar reloj nuevo';
+}
+
+async function saveProduct(){
+  if(!sb){ showMsg('formMsg','Falta configurar Supabase en este archivo.', false); return; }
+  const id = document.getElementById('editId').value;
+  const category = document.getElementById('fCategory').value;
+  const name = document.getElementById('fName').value.trim();
+  const price = parseFloat(document.getElementById('fPrice').value || '0');
+  const old_price = document.getElementById('fOldPrice').value ? parseFloat(document.getElementById('fOldPrice').value) : null;
+  const stock = parseInt(document.getElementById('fStock').value || '5');
+  const tagline = document.getElementById('fTagline').value.trim();
+  const description = document.getElementById('fDesc').value.trim();
+  const file = document.getElementById('fImage').files[0];
+
+  if(!name || !price){ showMsg('formMsg', 'Falta el nombre o el precio.', false); return; }
+
+  let image_url = null;
+  if(file){
+    const fileName = `${Date.now()}-${file.name.replace(/\s+/g,'-')}`;
+    const { error: upErr } = await sb.storage.from('product-images').upload(fileName, file);
+    if(upErr){ showMsg('formMsg', 'Error subiendo la foto: ' + upErr.message, false); return; }
+    const { data: pub } = sb.storage.from('product-images').getPublicUrl(fileName);
+    image_url = pub.publicUrl;
+  }
+
+  const payload = { category, name, price, old_price, stock, tagline, description };
+  if(image_url) payload.image_url = image_url;
+
+  let res;
+  if(id){
+    res = await sb.from('products').update(payload).eq('id', id);
+  } else {
+    if(!image_url){ showMsg('formMsg', 'Sube una foto para el reloj nuevo.', false); return; }
+    res = await sb.from('products').insert(payload);
+  }
+  if(res.error){ showMsg('formMsg', 'Error guardando: ' + res.error.message, false); return; }
+  showMsg('formMsg', 'Guardado correctamente.', true);
+  resetForm();
+  loadProducts();
+}
+
+let cachedProducts = [];
+async function loadProducts(){
+  if(!sb) return;
+  const { data, error } = await sb.from('products').select('*').order('category').order('sort_order');
+  const list = document.getElementById('productList');
+  if(error){ list.innerHTML = `<div class="msg err">Error cargando: ${error.message}</div>`; return; }
+  cachedProducts = data || [];
+  if(!data || !data.length){ list.innerHTML = `<p class="sub">Todavía no hay productos. Agrega el primero arriba.</p>`; return; }
+  list.innerHTML = data.map(p => `
+    <div class="item">
+      <img src="${p.image_url || ''}" alt="${p.name}">
+      <div class="info">
+        <div class="name">${p.name} ${p.stock <= 2 ? '<span class="badge-low">Bajo stock</span>' : ''}</div>
+        <div class="meta">${p.category} · ${money(p.price)} · Quedan ${p.stock}</div>
+      </div>
+      <div class="actions">
+        <button class="secondary" onclick='editProduct(${JSON.stringify(p).replace(/'/g,"&apos;")})'>Editar</button>
+        <button class="danger" onclick="deleteProduct('${p.id}')">Borrar</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function editProduct(p){
+  document.getElementById('editId').value = p.id;
+  document.getElementById('fCategory').value = p.category;
+  document.getElementById('fName').value = p.name;
+  document.getElementById('fPrice').value = p.price;
+  document.getElementById('fOldPrice').value = p.old_price || '';
+  document.getElementById('fStock').value = p.stock;
+  document.getElementById('fTagline').value = p.tagline || '';
+  document.getElementById('fDesc').value = p.description || '';
+  document.getElementById('formTitle').textContent = 'Editando: ' + p.name;
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+async function deleteProduct(id){
+  if(!confirm('¿Seguro que quieres borrar este reloj?')) return;
+  const { error } = await sb.from('products').delete().eq('id', id);
+  if(error){ showMsg('formMsg', 'Error borrando: ' + error.message, false); return; }
+  loadProducts();
+}
+
+// ---------- REGISTRAR VENTA (baja el stock solo) ----------
+function populateSaleSelect(){
+  const sel = document.getElementById('saleProduct');
+  sel.innerHTML = cachedProducts.map(p => `<option value="${p.id}">${p.name} — quedan ${p.stock}</option>`).join('');
+}
+
+async function registerSale(){
+  const id = document.getElementById('saleProduct').value;
+  const customer = document.getElementById('saleCustomer').value.trim();
+  const product = cachedProducts.find(p => p.id === id);
+  if(!product){ showMsg('saleMsg', 'Elige un reloj.', false); return; }
+
+  const { error: orderErr } = await sb.from('orders').insert({
+    product_id: product.id, product_name: product.name, price: product.price, customer_name: customer || null
+  });
+  if(orderErr){ showMsg('saleMsg', 'Error guardando el pedido: ' + orderErr.message, false); return; }
+
+  const newStock = Math.max(0, (product.stock || 0) - 1);
+  const { error: stockErr } = await sb.from('products').update({ stock: newStock }).eq('id', product.id);
+  if(stockErr){ showMsg('saleMsg', 'Venta guardada, pero no se pudo bajar el stock: ' + stockErr.message, false); return; }
+
+  showMsg('saleMsg', `Venta registrada. Stock de "${product.name}" bajó a ${newStock}.`, true);
+  document.getElementById('saleCustomer').value = '';
+  loadProducts();
+}
+
+// ---------- HISTORIAL DE PEDIDOS ----------
+async function loadOrders(){
+  const box = document.getElementById('ordersList');
+  const { data, error } = await sb.from('orders').select('*').order('created_at', {ascending:false}).limit(50);
+  if(error){ box.innerHTML = `<div class="msg err">${error.message}</div>`; return; }
+  if(!data || !data.length){ box.innerHTML = `<p class="sub">Todavía no hay pedidos registrados.</p>`; return; }
+  box.innerHTML = data.map(o => `
+    <div class="item">
+      <div class="info">
+        <div class="name">${o.product_name}</div>
+        <div class="meta">${o.customer_name ? o.customer_name + ' · ' : ''}${money(o.price)} · ${new Date(o.created_at).toLocaleString('es-CO')}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ---------- REPORTE DE VENTAS ----------
+async function loadReport(){
+  const { data, error } = await sb.from('orders').select('*');
+  const statsBox = document.getElementById('reportStats');
+  const listBox = document.getElementById('reportList');
+  if(error){ listBox.innerHTML = `<div class="msg err">${error.message}</div>`; return; }
+  if(!data || !data.length){
+    statsBox.innerHTML = '';
+    listBox.innerHTML = `<p class="sub">Todavía no hay ventas registradas.</p>`;
+    return;
+  }
+  const totalVentas = data.length;
+  const totalIngresos = data.reduce((s,o) => s + Number(o.price), 0);
+  const counts = {};
+  data.forEach(o => { counts[o.product_name] = (counts[o.product_name] || 0) + 1; });
+  const ranked = Object.entries(counts).sort((a,b) => b[1] - a[1]);
+
+  statsBox.innerHTML = `
+    <div class="stat"><div class="num mono">${totalVentas}</div><div class="lab">Ventas totales</div></div>
+    <div class="stat"><div class="num mono">${money(totalIngresos)}</div><div class="lab">Ingresos por ventas</div></div>
+    <div class="stat"><div class="num mono">${ranked[0] ? ranked[0][0] : '—'}</div><div class="lab">Más vendido</div></div>
+  `;
+  listBox.innerHTML = ranked.map(([name, count]) => `
+    <div class="item"><div class="info"><div class="name">${name}</div></div><div class="meta">${count} vendido${count>1?'s':''}</div></div>
+  `).join('');
+}
+
+// ---------- GASTOS E INGRESOS ----------
+async function addFinance(){
+  const type = document.getElementById('finType').value;
+  const amount = parseFloat(document.getElementById('finAmount').value || '0');
+  const description = document.getElementById('finDesc').value.trim();
+  if(!amount || !description){ showMsg('finMsg', 'Completa el monto y la descripción.', false); return; }
+  const { error } = await sb.from('finances').insert({ type, amount, description });
+  if(error){ showMsg('finMsg', 'Error guardando: ' + error.message, false); return; }
+  showMsg('finMsg', 'Movimiento guardado.', true);
+  document.getElementById('finAmount').value = '';
+  document.getElementById('finDesc').value = '';
+  loadFinance();
+}
+
+async function loadFinance(){
+  const { data, error } = await sb.from('finances').select('*').order('created_at', {ascending:false});
+  const statsBox = document.getElementById('finStats');
+  const listBox = document.getElementById('finList');
+  if(error){ listBox.innerHTML = `<div class="msg err">${error.message}</div>`; return; }
+  if(!data || !data.length){
+    statsBox.innerHTML = '';
+    listBox.innerHTML = `<p class="sub">Todavía no hay movimientos registrados.</p>`;
+    return;
+  }
+  const ingresos = data.filter(f => f.type === 'ingreso').reduce((s,f) => s + Number(f.amount), 0);
+  const gastos = data.filter(f => f.type === 'gasto').reduce((s,f) => s + Number(f.amount), 0);
+  statsBox.innerHTML = `
+    <div class="stat"><div class="num mono" style="color:var(--gold-1);">${money(ingresos)}</div><div class="lab">Ingresos</div></div>
+    <div class="stat"><div class="num mono" style="color:var(--oxblood-light);">${money(gastos)}</div><div class="lab">Gastos</div></div>
+    <div class="stat"><div class="num mono">${money(ingresos - gastos)}</div><div class="lab">Balance</div></div>
+  `;
+  listBox.innerHTML = data.map(f => `
+    <div class="item">
+      <div class="info"><div class="name">${f.description}</div><div class="meta">${new Date(f.created_at).toLocaleDateString('es-CO')}</div></div>
+      <div class="meta" style="color:${f.type==='ingreso'?'var(--gold-1)':'var(--oxblood-light)'};">${f.type==='ingreso'?'+':'-'}${money(f.amount)}</div>
+    </div>
+  `).join('');
+}
+
+// ---------- COMENTARIOS ----------
+async function loadPendingComments(){
+  if(!sb) return;
+  var box = document.getElementById('pendingComments');
+  var { data, error } = await sb.from('comments').select('*').eq('approved', false).order('created_at', {ascending:false});
+  if(error){ box.innerHTML = `<div class="msg err">${error.message}</div>`; return; }
+  if(!data || !data.length){ box.innerHTML = `<p class="sub">No hay comentarios pendientes por ahora.</p>`; return; }
+  box.innerHTML = data.map(c => `
+    <div class="item">
+      <div class="info">
+        <div class="name">${c.name}</div>
+        <div class="meta">"${c.message}"</div>
+      </div>
+      <div class="actions">
+        <button class="secondary" onclick="approveComment('${c.id}')">Aprobar</button>
+        <button class="danger" onclick="rejectComment('${c.id}')">Rechazar</button>
+      </div>
+    </div>
+  `).join('');
+}
+async function approveComment(id){
+  const { error } = await sb.from('comments').update({ approved: true }).eq('id', id);
+  if(error){ alert('Error aprobando: ' + error.message); return; }
+  loadPendingComments();
+}
+async function rejectComment(id){
+  if(!confirm('¿Borrar este comentario?')) return;
+  const { error } = await sb.from('comments').delete().eq('id', id);
+  if(error){ alert('Error borrando: ' + error.message); return; }
+  loadPendingComments();
+}
+</script>
+
+</body>
+</html>
